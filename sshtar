@@ -1,0 +1,182 @@
+#!/bin/bash
+#==
+#   NOTE      - sshtar
+#   Author    - Aru
+#
+#   Created   - 2024.10.08
+#   Github    - https://github.com/aruyu
+#   Contact   - vine9151@gmail.com
+#/
+
+
+
+T_CO_RED='\e[1;31m'
+T_CO_YELLOW='\e[1;33m'
+T_CO_GREEN='\e[1;32m'
+T_CO_BLUE='\e[1;34m'
+T_CO_GRAY='\e[1;30m'
+T_CO_NC='\e[0m'
+
+CURRENT_PROGRESS=0
+
+function script_print()
+{
+  echo -ne "${T_CO_BLUE}[SCRIPT]${T_CO_NC}$1"
+}
+
+function script_notify_print()
+{
+  echo -ne "${T_CO_BLUE}[SCRIPT]${T_CO_NC}${T_CO_GREEN}-Notify- $1${T_CO_NC}"
+}
+
+function script_error_print()
+{
+  echo -ne "${T_CO_BLUE}[SCRIPT]${T_CO_NC}${T_CO_RED}-Error- $1${T_CO_NC}"
+}
+
+function script_println()
+{
+  echo -ne "${T_CO_BLUE}[SCRIPT]${T_CO_NC}$1\n"
+}
+
+function script_notify_println()
+{
+  echo -ne "${T_CO_BLUE}[SCRIPT]${T_CO_NC}${T_CO_GREEN}-Notify- $1${T_CO_NC}\n"
+}
+
+function script_error_println()
+{
+  echo -ne "${T_CO_BLUE}[SCRIPT]${T_CO_NC}${T_CO_RED}-Error- $1${T_CO_NC}\n"
+}
+
+function error_exit()
+{
+  script_error_println "$1\n"
+  exit 1
+}
+
+function print_usage()
+{
+  echo "usage: sshtar [[-p port-number] | [-e] | [-h] | [-v]]"
+  echo
+  echo "Send or receive compressed tar files using SSH.."
+  echo "MIT License <https://github.com/aruyu/sshtar/blob/master/LICENSE/>"
+  echo "Report or pull request any time. <https://github.com/aruyu/sshtar/>"
+  echo
+  echo "options:"
+  echo "  -p <port-number>  SSH Port number"
+  echo "                    Blank this would set default ssh port number"
+  echo "  -e                Extract tar file after send"
+  echo "  -h                This message"
+  echo "  -v                version"
+}
+
+function print_verbose()
+{
+  echo "sshtar 1.0.0"
+  echo "MIT License <https://github.com/aruyu/sshtar/blob/master/LICENSE/>"
+  echo "Report or pull request any time. <https://github.com/aruyu/sshtar/>"
+}
+
+
+
+
+#==
+#   Starting codes in blew
+#/
+
+if [[ $EUID -eq 0 ]]; then
+  error_exit "This script must be run as USER!"
+fi
+
+
+#sshtar -p 50000 user@localhost:/home/work/item ./item
+#sshtar -z -p 50000 user@localhost:/home/work/item ./item.tar.gz
+#
+#sshtar -p 50000 ./item user@localhost:/home/work/item
+#sshtar -z -p 50000 ./item user@localhost:/home/work/item.tar.gz
+
+
+while getopts 'p:ehv' flag; do
+  case "${flag}" in
+    p) p_flag="${OPTARG}";
+       shift; shift;;
+    e) e_flag='true';
+       shift;;
+
+    h) h_flag='true';;
+    v) verbose='true';;
+    *) script_error_println "Option error.\n";
+       print_usage;
+       exit 1;;
+  esac
+done
+
+
+if [[ ${h_flag} == 'true' ]]; then
+  print_usage
+  exit
+fi
+
+if [[ ${verbose} == 'true' ]]; then
+  print_verbose
+  exit
+fi
+
+
+if [[ $1 =~ '@' ]]; then
+  ssh_cmds=($(echo $1 | tr ':' '\n'))
+  ssh_dirs=($(echo ${ssh_cmds[1]} | tr '/' '\n'))
+  ssh_dirs_index=${#ssh_dirs[*]}
+  ssh_pos='upper'
+
+  ssh_addr=${ssh_cmds[0]}
+  src_dir=""
+  src_file=${ssh_dirs[$((ssh_dirs_index - 1))]}
+  des_dir=$2
+
+  for (( i=0; i<$((ssh_dirs_index - 1)); i++ )); do
+    src_dir+="/${ssh_dirs[$i]}"
+  done
+
+elif [[ $2 =~ '@' ]]; then
+  ssh_cmds=($(echo $2 | tr ':' '\n'))
+  ssh_pos='lower'
+
+  ssh_addr=${ssh_cmds[0]}
+  src_dir=$1
+  des_dir=${ssh_cmds[1]}
+fi
+
+
+if [[ ${p_flag} != '' ]]; then
+  port_number="-p ${p_flag}"
+else
+  port_number=""
+fi
+
+
+if [[ ${e_flag} == 'true' ]]; then
+  if [[ ${ssh_pos} == 'upper' ]]; then
+    ssh ${port_number} ${ssh_addr} "cd ${src_dir} && tar cvfz - ${src_file}" | cat > ${des_dir}
+  elif [[ ${ssh_pos} == 'lower' ]]; then
+    tar cvfz - ${src_dir} | ssh ${port_number} ${ssh_addr} "cat > ${des_dir}"
+  else
+    script_error_println "Option error.\n"
+    print_usage
+    exit
+  fi
+
+else
+  if [[ ${ssh_pos} == 'upper' ]]; then
+    ssh ${port_number} ${ssh_addr} "cd ${src_dir} && tar cvfz - ${src_file}" | cat > ${des_dir}
+  elif [[ ${ssh_pos} == 'lower' ]]; then
+    tar cvfz - ${src_dir} | ssh ${port_number} ${ssh_addr} "cat > ${des_dir}"
+  else
+    script_error_println "Option error.\n"
+    print_usage
+    exit
+  fi
+fi
+
+script_notify_println "Done."
