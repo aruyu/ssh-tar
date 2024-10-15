@@ -1,6 +1,6 @@
 #!/bin/bash
 #==
-#   NOTE      - sshtar
+#   NOTE      - ssh-tar
 #   Author    - Aru
 #
 #   Created   - 2024.10.08
@@ -57,7 +57,7 @@ function error_exit()
 
 function print_usage()
 {
-  echo "usage: sshtar [[-p port-number] | [-e] | [-h] | [-v]]"
+  echo "usage: ssh-tar [[-p port-number] | [-e] | [-h] | [-v]]"
   echo
   echo "Send or receive compressed tar files using SSH.."
   echo "MIT License <https://github.com/aruyu/sshtar/blob/master/LICENSE/>"
@@ -73,7 +73,7 @@ function print_usage()
 
 function print_verbose()
 {
-  echo "sshtar 1.0.0"
+  echo "ssh-tar 1.0.0"
   echo "MIT License <https://github.com/aruyu/sshtar/blob/master/LICENSE/>"
   echo "Report or pull request any time. <https://github.com/aruyu/sshtar/>"
 }
@@ -90,11 +90,11 @@ if [[ $EUID -eq 0 ]]; then
 fi
 
 
-#sshtar -p 50000 user@localhost:/home/work/item ./item
-#sshtar -z -p 50000 user@localhost:/home/work/item ./item.tar.gz
+#ssh-tar -p 50000 user@localhost:/home/work/item ./item
+#ssh-tar -z -p 50000 user@localhost:/home/work/item ./item.tar.gz
 #
-#sshtar -p 50000 ./item user@localhost:/home/work/item
-#sshtar -z -p 50000 ./item user@localhost:/home/work/item.tar.gz
+#ssh-tar -p 50000 ./item user@localhost:/home/work/item
+#ssh-tar -z -p 50000 ./item user@localhost:/home/work/item.tar.gz
 
 
 while getopts 'p:ehv' flag; do
