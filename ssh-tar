@@ -74,9 +74,20 @@ function print_usage()
 
 function print_verbose()
 {
-  echo "ssh-tar 1.1.0"
+  echo "ssh-tar 1.1.1"
   echo "MIT License <https://github.com/aruyu/sshtar/blob/master/LICENSE/>"
   echo "Report or pull request any time. <https://github.com/aruyu/sshtar/>"
+}
+
+function delete_file()
+{
+  if [[ ${d_flag} != '' ]]; then
+    delete_cmd="&& rm $1"
+  else
+    delete_cmd=""
+  fi
+
+  echo ${delete_cmd}
 }
 
 
@@ -165,24 +176,16 @@ fi
 
 
 
+
+
 if [[ ${e_flag} == 'true' ]]; then
   if [[ ${ssh_pos} == 'upper' ]]; then
     script_notify_println "Compressing..."
-
-    if [[ ${d_flag} == 'true' ]]; then
-      ssh ${port_number} ${ssh_addr} "cd ${src_dir} && tar cfz - ${src_file}" | cat > ${des_dir} && tar xfz ${des_dir} && rm ${des_dir}
-    else
-      ssh ${port_number} ${ssh_addr} "cd ${src_dir} && tar cfz - ${src_file}" | cat > ${des_dir} && tar xfz ${des_dir}
-    fi
+    ssh ${port_number} ${ssh_addr} "cd ${src_dir} && tar cfz - ${src_file}" | cat > ${des_dir} && tar xfz ${des_dir} $(delete_file ${des_dir})
 
   elif [[ ${ssh_pos} == 'lower' ]]; then
     script_notify_println "Compressing..."
-
-    if [[ ${d_flag} == 'true' ]]; then
-      tar cfz - ${src_dir} | ssh ${port_number} ${ssh_addr} "cd ${des_dir} && cat > ${des_file} && tar xfz ${des_file} && rm ${des_file}"
-    else
-      tar cfz - ${src_dir} | ssh ${port_number} ${ssh_addr} "cd ${des_dir} && cat > ${des_file} && tar xfz ${des_file}"
-    fi
+    tar cfz - ${src_dir} | ssh ${port_number} ${ssh_addr} "cd ${des_dir} && cat > ${des_file} && tar xfz ${des_file} $(delete_file ${des_file})"
 
   else
     script_error_println "Option error.\n"
