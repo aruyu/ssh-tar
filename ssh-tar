@@ -57,23 +57,24 @@ function error_exit()
 
 function print_usage()
 {
-  echo "usage: ssh-tar [[-p port-number] | [-e] | [-h] | [-v]]"
+  echo "usage: ssh-tar [-p <port-value>] [[-e] | [-d]] [-h] [-v] <src> <des>"
   echo
-  echo "Send or receive compressed tar files using SSH.."
+  echo "Send or receive files using SSH after compress to tar.."
   echo "MIT License <https://github.com/aruyu/sshtar/blob/master/LICENSE/>"
   echo "Report or pull request any time. <https://github.com/aruyu/sshtar/>"
   echo
   echo "options:"
-  echo "  -p <port-number>  SSH Port number"
-  echo "                    Blank this would set default ssh port number"
-  echo "  -e                Extract tar file after send"
-  echo "  -h                This message"
-  echo "  -v                version"
+  echo "  -p <port-value>  SSH Port number"
+  echo "                   Blank this would set default ssh port number"
+  echo "  -e               Extract tar file after send"
+  echo "  -d               Delete sent tar file after extract"
+  echo "  -h               This message"
+  echo "  -v               version"
 }
 
 function print_verbose()
 {
-  echo "ssh-tar 1.0.0"
+  echo "ssh-tar 1.1.0"
   echo "MIT License <https://github.com/aruyu/sshtar/blob/master/LICENSE/>"
   echo "Report or pull request any time. <https://github.com/aruyu/sshtar/>"
 }
@@ -97,12 +98,11 @@ fi
 #ssh-tar -z -p 50000 ./item user@localhost:/home/work/item.tar.gz
 
 
-while getopts 'p:ehv' flag; do
+while getopts 'p:edhv' flag; do
   case "${flag}" in
-    p) p_flag="${OPTARG}";
-       shift; shift;;
-    e) e_flag='true';
-       shift;;
+    p) p_flag="${OPTARG}";;
+    e) e_flag='true';;
+    d) d_flag='true';;
 
     h) h_flag='true';;
     v) verbose='true';;
@@ -124,8 +124,8 @@ if [[ ${verbose} == 'true' ]]; then
 fi
 
 
-if [[ $1 =~ '@' ]]; then
-  ssh_cmds=($(echo $1 | tr ':' '\n'))
+if [[ ${*: -2:1} =~ '@' ]]; then
+  ssh_cmds=($(echo ${*: -2:1} | tr ':' '\n'))
   ssh_dirs=($(echo ${ssh_cmds[1]} | tr '/' '\n'))
   ssh_dirs_index=${#ssh_dirs[*]}
   ssh_pos='upper'
@@ -133,19 +133,26 @@ if [[ $1 =~ '@' ]]; then
   ssh_addr=${ssh_cmds[0]}
   src_dir=""
   src_file=${ssh_dirs[$((ssh_dirs_index - 1))]}
-  des_dir=$2
+  des_dir=${*: -1:1}
 
   for (( i=0; i<$((ssh_dirs_index - 1)); i++ )); do
     src_dir+="/${ssh_dirs[$i]}"
   done
 
-elif [[ $2 =~ '@' ]]; then
-  ssh_cmds=($(echo $2 | tr ':' '\n'))
+elif [[ ${*: -1:1} =~ '@' ]]; then
+  ssh_cmds=($(echo ${*: -1:1} | tr ':' '\n'))
+  ssh_dirs=($(echo ${ssh_cmds[1]} | tr '/' '\n'))
+  ssh_dirs_index=${#ssh_dirs[*]}
   ssh_pos='lower'
 
   ssh_addr=${ssh_cmds[0]}
-  src_dir=$1
-  des_dir=${ssh_cmds[1]}
+  src_dir=${*: -2:1}
+  des_dir=""
+  des_file=${ssh_dirs[$((ssh_dirs_index - 1))]}
+
+  for (( i=0; i<$((ssh_dirs_index - 1)); i++ )); do
+    des_dir+="/${ssh_dirs[$i]}"
+  done
 fi
 
 
@@ -156,11 +163,27 @@ else
 fi
 
 
+
+
 if [[ ${e_flag} == 'true' ]]; then
   if [[ ${ssh_pos} == 'upper' ]]; then
-    ssh ${port_number} ${ssh_addr} "cd ${src_dir} && tar cvfz - ${src_file}" | cat > ${des_dir}
+    script_notify_println "Compressing..."
+
+    if [[ ${d_flag} == 'true' ]]; then
+      ssh ${port_number} ${ssh_addr} "cd ${src_dir} && tar cfz - ${src_file}" | cat > ${des_dir} && tar xfz ${des_dir} && rm ${des_dir}
+    else
+      ssh ${port_number} ${ssh_addr} "cd ${src_dir} && tar cfz - ${src_file}" | cat > ${des_dir} && tar xfz ${des_dir}
+    fi
+
   elif [[ ${ssh_pos} == 'lower' ]]; then
-    tar cvfz - ${src_dir} | ssh ${port_number} ${ssh_addr} "cat > ${des_dir}"
+    script_notify_println "Compressing..."
+
+    if [[ ${d_flag} == 'true' ]]; then
+      tar cfz - ${src_dir} | ssh ${port_number} ${ssh_addr} "cd ${des_dir} && cat > ${des_file} && tar xfz ${des_file} && rm ${des_file}"
+    else
+      tar cfz - ${src_dir} | ssh ${port_number} ${ssh_addr} "cd ${des_dir} && cat > ${des_file} && tar xfz ${des_file}"
+    fi
+
   else
     script_error_println "Option error.\n"
     print_usage
@@ -169,14 +192,19 @@ if [[ ${e_flag} == 'true' ]]; then
 
 else
   if [[ ${ssh_pos} == 'upper' ]]; then
-    ssh ${port_number} ${ssh_addr} "cd ${src_dir} && tar cvfz - ${src_file}" | cat > ${des_dir}
+    script_notify_println "Compressing..."
+    ssh ${port_number} ${ssh_addr} "cd ${src_dir} && tar cfz - ${src_file}" | cat > ${des_dir}
+
   elif [[ ${ssh_pos} == 'lower' ]]; then
-    tar cvfz - ${src_dir} | ssh ${port_number} ${ssh_addr} "cat > ${des_dir}"
+    script_notify_println "Compressing..."
+    tar cfz - ${src_dir} | ssh ${port_number} ${ssh_addr} "cd ${des_dir} && cat > ${des_file}"
+
   else
     script_error_println "Option error.\n"
     print_usage
     exit
   fi
 fi
+
 
 script_notify_println "Done."
