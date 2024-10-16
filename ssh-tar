@@ -102,11 +102,6 @@ if [[ $EUID -eq 0 ]]; then
 fi
 
 
-#ssh-tar -p 50000 user@localhost:/home/work/item ./item
-#ssh-tar -z -p 50000 user@localhost:/home/work/item ./item.tar.gz
-#
-#ssh-tar -p 50000 ./item user@localhost:/home/work/item
-#ssh-tar -z -p 50000 ./item user@localhost:/home/work/item.tar.gz
 
 
 while getopts 'p:edhv' flag; do
@@ -172,8 +167,6 @@ if [[ ${p_flag} != '' ]]; then
 else
   port_number=""
 fi
-
-
 
 
 
