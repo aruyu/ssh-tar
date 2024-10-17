@@ -1,5 +1,5 @@
 all:
-	echo Only for installation.
+	@echo Only for installation.
 
 install:
 	cp ./ssh-tar /usr/bin/ssh-tar
